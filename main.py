@@ -1,5 +1,5 @@
 """
-Elective planner for R23 M.Sc (CS) DSC threads.
+Elective planner for R23 (cs) DSC threads.
 
 Models the data as a bipartite graph:
     Thread nodes  ---(edge labelled with slot DSC-E1..E5)---  Course nodes
@@ -224,4 +224,5 @@ def draw(path="elective_graph.png"):
 
 if __name__ == "__main__":
     report()
+
     draw()
