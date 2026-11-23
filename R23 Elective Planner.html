@@ -1,0 +1,639 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>R23 Elective Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: toolbar of thread chips on top, a canvas (network or semester map) on the left, a planning panel on the right. */
+:root{
+  --bg:#F4F5F8; --surface:#FFFFFF; --surface2:#ECEFF4; --fg:#141925; --muted:#5A6479; --line:#D7DCE6;
+  --gold:#A97800; --goldbg:#FFF1C9; --goldtx:#7A5600; --accent:#2F63C7; --on-t:#FFFFFF;
+  --t0:#2F63C7; --t1:#C2610C; --t2:#1F8049; --t3:#8444B0; --t4:#CC3A35; --t5:#17808C;
+  --sem5:rgba(47,99,199,.07); --sem6:rgba(31,128,73,.07); --sem7:rgba(132,68,176,.07);
+  --shadow:0 1px 2px rgba(20,25,37,.06),0 8px 24px rgba(20,25,37,.06);
+  --display:'Space Grotesk',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E121A; --surface:#161B26; --surface2:#1E2431; --fg:#E7EBF3; --muted:#9AA4B8; --line:#2A3242;
+    --gold:#F2C14E; --goldbg:#3A2F12; --goldtx:#F2C14E; --accent:#7AA2FF; --on-t:#0E121A;
+    --t0:#7AA2FF; --t1:#FFA34D; --t2:#55CC88; --t3:#C48DEB; --t4:#FF7A73; --t5:#4FC6D4;
+    --sem5:rgba(122,162,255,.09); --sem6:rgba(85,204,136,.08); --sem7:rgba(196,141,235,.09);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E121A; --surface:#161B26; --surface2:#1E2431; --fg:#E7EBF3; --muted:#9AA4B8; --line:#2A3242;
+  --gold:#F2C14E; --goldbg:#3A2F12; --goldtx:#F2C14E; --accent:#7AA2FF; --on-t:#0E121A;
+  --t0:#7AA2FF; --t1:#FFA34D; --t2:#55CC88; --t3:#C48DEB; --t4:#FF7A73; --t5:#4FC6D4;
+  --sem5:rgba(122,162,255,.09); --sem6:rgba(85,204,136,.08); --sem7:rgba(196,141,235,.09);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--body);
+  padding-block:20px 36px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit}
+button:focus-visible,.node:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1380px;margin:0 auto;display:grid;gap:14px}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+h1{font:600 28px/1.1 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0}
+.seg{display:inline-flex;background:var(--surface2);border-radius:11px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:7px 14px;border-radius:8px;cursor:pointer;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tchip{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);background:var(--surface);padding:6px 13px;border-radius:999px;font-weight:500;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
+.tchip i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.tchip:hover{border-color:var(--c)}
+.tchip[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:var(--on-t)}
+.tchip[aria-pressed="true"] i{background:var(--on-t)}
+.clear{border:0;background:transparent;color:var(--accent);padding:6px 8px;cursor:pointer;font-weight:500}
+.semkey{display:flex;flex-wrap:wrap;gap:4px 18px;color:var(--muted);font-size:12.5px}
+.semkey b{font:600 12px var(--mono);color:var(--fg)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}
+@media (max-width:980px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);min-width:0}
+#net{position:relative;height:clamp(500px,76vh,820px);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:22px 22px}
+#net>svg{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+#net>svg:active{cursor:grabbing}
+.tools{position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:2}
+.tools button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:16px;line-height:1}
+.ttoggle{position:absolute;top:12px;left:12px;z-index:2;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:13px}
+.ttoggle[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.legend{position:absolute;left:12px;bottom:12px;z-index:2;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;max-width:calc(100% - 24px);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;gap:7px;align-items:center}
+.lgring{width:14px;height:14px;border-radius:50%;border:2px dashed var(--gold);background:var(--goldbg)}
+.lgchip{font:600 10px var(--mono);background:var(--muted);color:var(--surface);padding:2px 7px;border-radius:8px}
+.tip{position:absolute;z-index:4;pointer-events:none;max-width:260px;background:var(--fg);color:var(--bg);border-radius:10px;padding:8px 11px;font-size:12.5px;line-height:1.4;box-shadow:var(--shadow)}
+.tip b{font:600 11px var(--mono);opacity:.75;display:block}
+.tip .tl{display:block;margin-top:3px;opacity:.9}
+
+/* network svg */
+.edge{stroke:var(--c);stroke-width:1.8;opacity:.5;fill:none;transition:opacity .15s}
+.edge.hl{opacity:.95;stroke-width:2.8}
+.edge.dim{opacity:.05}
+.chip{transition:opacity .15s;pointer-events:none}
+.chip rect{fill:var(--c)}
+.chip text{fill:var(--on-t);font:600 9.5px var(--mono);text-anchor:middle;dominant-baseline:central}
+.chip.dim{opacity:.06}
+.node{cursor:pointer;transition:opacity .15s}
+.node.dim{opacity:.16}
+.thread rect{fill:var(--c);stroke:var(--surface);stroke-width:3}
+.thread text{fill:var(--on-t);font:600 12.5px var(--display);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.thread.sel rect{stroke:var(--fg);stroke-width:3}
+.course .dot{fill:var(--surface2);stroke:var(--muted);stroke-width:1.5}
+.course.shared .dot{fill:var(--goldbg);stroke:var(--gold)}
+.course .ring{fill:none;stroke:var(--gold);stroke-width:2;stroke-dasharray:3 3}
+.course.x .ring{stroke-dasharray:none;stroke-width:3.5}
+.course .code{fill:var(--fg);font:600 9.5px var(--mono);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.course .lbl{fill:var(--fg);font:500 11px var(--body);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+.course.sel .dot{stroke:var(--fg);stroke-width:3}
+.notitles .course .lbl{display:none}
+.notitles .course:hover .lbl,.notitles .course.sel .lbl{display:block}
+
+/* semester map */
+.mapscroll{overflow-x:auto;padding:16px}
+.grid{position:relative;display:grid;grid-template-columns:152px repeat(5,minmax(164px,1fr));gap:8px;min-width:1000px}
+.band{grid-row:1/9;border-radius:14px;z-index:0}
+.band.s5{grid-column:2/3;background:var(--sem5)}
+.band.s6{grid-column:3/5;background:var(--sem6)}
+.band.s7{grid-column:5/7;background:var(--sem7)}
+.semh{position:relative;z-index:1;text-align:center;font:600 13px var(--display);padding-top:9px}
+.eh{position:relative;z-index:1;text-align:center;font:600 12px var(--mono);color:var(--muted);padding-bottom:4px}
+.corner{z-index:1;color:var(--muted);font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:flex-end;padding-bottom:6px}
+.rowh{position:sticky;left:0;z-index:3;display:flex;align-items:center;background:var(--surface);padding-right:6px;transition:opacity .15s}
+.rbtn{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 11px;cursor:pointer;font:600 13px/1.25 var(--display)}
+.rbtn i{flex:none;width:11px;height:11px;border-radius:50%;background:var(--c)}
+.rbtn[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:var(--on-t)}
+.rbtn[aria-pressed="true"] i{background:var(--on-t)}
+.mcard{position:relative;z-index:1;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;gap:6px;cursor:pointer;min-height:92px;transition:opacity .15s}
+.mcard.shared{background:var(--goldbg);border-color:var(--gold)}
+.mcode{font:500 10.5px var(--mono);color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.mcode b{color:var(--goldtx);font-weight:600}
+.mttl{font:600 13px/1.3 var(--display)}
+.malso{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}
+.malso em{font:500 10.5px var(--mono);font-style:normal;border-radius:6px;padding:2px 6px;background:var(--surface);border:1px solid var(--line);display:inline-flex;gap:4px;align-items:center}
+.malso i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.grid.focus .mcard.dim,.grid.focus .rowh.dim{opacity:.22}
+.mcard.hl{outline:2px solid var(--gold);outline-offset:1px}
+.mcard.sel{outline:2px solid var(--fg);outline-offset:1px}
+.mlinks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
+.mlink{fill:none;stroke:var(--gold);stroke-width:2.5;stroke-dasharray:6 5}
+.mend{fill:var(--gold)}
+
+/* panel */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 16px 18px;box-shadow:var(--shadow);min-width:0}
+@media (min-width:981px){.panel{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}}
+.panel h2{font:600 18px/1.2 var(--display);margin:0 0 6px;letter-spacing:-.01em}
+.panel h3{font:600 14px/1.3 var(--display);margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.lead{color:var(--muted);margin:0 0 12px}
+.dot{display:inline-block;flex:none;width:10px;height:10px;border-radius:50%;background:var(--c)}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 4px;color:var(--muted)}
+.stats b{font:600 15px var(--display);color:var(--fg);font-variant-numeric:tabular-nums}
+.cl{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px;cursor:pointer;margin-top:6px}
+.cl:hover{border-color:var(--muted)}
+.cl.sh{background:var(--goldbg);border-color:var(--gold)}
+.cs{flex:none;font:600 11px var(--mono);background:var(--surface2);border-radius:6px;padding:2px 6px;margin-top:1px}
+.cl.sh .cs{background:var(--surface)}
+.cn{flex:1;min-width:0;font-weight:500;line-height:1.3}
+.cc{display:block;font:500 10.5px var(--mono);color:var(--muted)}
+.also-in{display:block;font:500 11px var(--mono);color:var(--goldtx);margin-top:3px}
+.star{color:var(--goldtx);font-size:13px}
+.tblock{margin-top:14px}
+.tblock h3{margin-top:0}
+.semrow{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;margin-top:6px;align-items:start}
+.semlab{font:600 11px var(--mono);color:var(--muted);padding-top:12px;text-transform:uppercase;letter-spacing:.05em}
+.semrow .cl:first-child{margin-top:0}
+.semitems{min-width:0}
+.semitems .cl+.cl{margin-top:6px}
+.notice{border:1px solid var(--gold);background:var(--goldbg);color:var(--fg);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px}
+.notice b{color:var(--goldtx)}
+.info{border:1px solid var(--line);background:var(--surface2);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px}
+.thr{display:flex;align-items:center;gap:8px;margin-top:6px;font-weight:500}
+.thr .cs{margin-left:auto}
+.mx{display:grid;grid-template-columns:auto repeat(6,minmax(0,1fr));gap:3px;align-items:center}
+.mxh{font:600 10.5px var(--mono);display:flex;gap:4px;align-items:center;justify-content:center;white-space:nowrap}
+.mxh.r{justify-content:flex-start;padding-right:6px}
+.mxc{height:30px;border-radius:7px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);font:600 12px var(--mono);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mxc.on{background:var(--goldbg);border-color:var(--gold);color:var(--goldtx)}
+.mxc.cur{outline:2px solid var(--fg);outline-offset:1px}
+.mxc.diag{background:transparent;border-color:transparent;cursor:default}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>R23 Elective Planner</h1>
+      <p class="sub">M.Sc Computer Science · six DSC threads · Semesters 5 to 7</p>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <button id="vNet" aria-pressed="true">Network</button>
+      <button id="vMap" aria-pressed="false">Semester map</button>
+    </div>
+  </header>
+
+  <div class="toolbar" id="chips" aria-label="Threads"></div>
+
+  <div class="semkey">
+    <span><b>E1</b> is taken in Sem 5</span>
+    <span><b>E2 · E3</b> in Sem 6</span>
+    <span><b>E4 · E5</b> in Sem 7</span>
+  </div>
+
+  <div class="main">
+    <section class="stage">
+      <div id="net">
+        <button class="ttoggle" id="ttoggle" aria-pressed="true">Course titles</button>
+        <div class="tools">
+          <button id="zin" aria-label="Zoom in">+</button>
+          <button id="zout" aria-label="Zoom out">−</button>
+          <button id="zfit" aria-label="Fit to view">⤢</button>
+        </div>
+        <div class="legend">
+          <span><i class="lgring"></i>Shared course</span>
+          <span><i class="lgchip">E2 · S6</i>Slot · semester on each line</span>
+        </div>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="mapscroll" id="map" hidden><div class="grid" id="grid"></div></div>
+    </section>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var PREFIX='R23MSCST';
+var SLOTS=['E1','E2','E3','E4','E5'];
+var SEM={E1:5,E2:6,E3:6,E4:7,E5:7};
+var TITLES={
+ '019':'Data Warehousing and Data Mining','020':'Statistical and Predictive Analytics','021':'Machine Learning',
+ '022':'Deep Learning','023':'Natural Language Processing','024':'Data Analytics and Tools',
+ '025':'Mean Stack Web Development','026':'Statistical and Mathematical Foundations of Data Analytics',
+ '027':'Time Series Analysis in Data Science','028':'Middleware Technologies','029':'Service Oriented Architecture',
+ '030':'Software Configuration Management','031':'Usability Engineering','032':'Cryptography and Information Security',
+ '033':'Block Chain Essentials','034':'Principles of IoT','035':'IoT Development Boards and its Interfacing',
+ '036':'Ad Hoc Networks','037':'Information Security Management Standards','038':'Routing and Switching Concepts',
+ '039':'Enterprise Networking, Security and Automation','040':'Firewalls and VPN'
+};
+var T=[
+ {name:'AI & ML',short:'AI & ML',list:['019','020','021','022','023']},
+ {name:'Business Intelligence',short:'BI',list:['019','024','021','022','025']},
+ {name:'Data Science',short:'DS',list:['026','019','020','024','027']},
+ {name:'Enterprise Systems',short:'ES',list:['028','029','030','031','025']},
+ {name:'IoT & Cyber Security',short:'IoT',list:['032','033','034','035','036']},
+ {name:'Computer Networks',short:'CN',list:['037','036','038','039','040']}
+];
+var where={};
+T.forEach(function(t,ti){t.list.forEach(function(c,i){(where[c]=where[c]||[]).push({ti:ti,slot:SLOTS[i]});});});
+var codes=Object.keys(TITLES).sort();
+var isShared=function(c){return where[c].length>1;};
+var sharedCodes=codes.filter(isShared);
+
+var $=function(s){return document.querySelector(s);};
+var esc=function(s){return String(s).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});};
+var dot=function(ti){return '<i class="dot" style="--c:var(--t'+ti+')"></i>';};
+var S={view:'network',threads:new Set(),course:null,hover:null,mapHover:null,titles:true};
+function toggleThread(i){if(S.threads.has(i))S.threads.delete(i);else S.threads.add(i);}
+
+/* ---------- toolbar ---------- */
+var chipsEl=$('#chips');
+chipsEl.innerHTML=T.map(function(t,i){
+  return '<button class="tchip" data-t="'+i+'" style="--c:var(--t'+i+')" aria-pressed="false"><i></i>'+esc(t.name)+'</button>';
+}).join('')+'<button class="clear" id="clear" hidden>Clear selection</button>';
+chipsEl.addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  if(b.id==='clear'){S.threads.clear();S.course=null;}
+  else toggleThread(+b.dataset.t);
+  render();
+});
+$('#vNet').addEventListener('click',function(){S.view='network';render();});
+$('#vMap').addEventListener('click',function(){S.view='map';render();});
+
+/* ---------- network ---------- */
+var net=null;
+function wrapTitle(s,max){
+  var words=s.split(' '),lines=[],cur='';
+  words.forEach(function(w){
+    if(cur && (cur+' '+w).length>max){lines.push(cur);cur=w;}
+    else cur=cur?cur+' '+w:w;
+  });
+  if(cur)lines.push(cur);
+  return lines;
+}
+function buildNet(){
+  var wrap=$('#net');
+  if(net)net.sim.stop();
+  var old=wrap.querySelector(':scope > svg'); if(old)old.remove();
+  var W=Math.max(320,wrap.clientWidth),H=Math.max(460,wrap.clientHeight);
+  var svg=d3.select(wrap).insert('svg',':first-child').attr('viewBox','0 0 '+W+' '+H)
+    .attr('role','group').attr('aria-label','Graph of elective threads and their courses');
+  var g=svg.append('g');
+  var zoom=d3.zoom().scaleExtent([0.35,2.6]).on('zoom',function(e){g.attr('transform',e.transform);});
+  svg.call(zoom).on('dblclick.zoom',null);
+
+  var cx=W/2,cy=H/2,rx=Math.min(W*0.30,440),ry=Math.min(H*0.34,320);
+  var order=[2,0,1,3,4,5];
+  var nodes=[];
+  T.forEach(function(t,ti){
+    var p=order.indexOf(ti),a=-Math.PI/2+p*Math.PI/3+Math.PI/6;
+    var n={id:'t'+ti,kind:'thread',ti:ti,w:Math.max(92,t.name.length*7.6+28),tx:cx+rx*Math.cos(a),ty:cy+ry*Math.sin(a)};
+    n.x=n.tx;n.y=n.ty;nodes.push(n);
+  });
+  codes.forEach(function(c,i){
+    var th=where[c].map(function(w){return nodes[w.ti];});
+    nodes.push({id:c,kind:'course',code:c,shared:isShared(c),r:isShared(c)?15:13,
+      x:d3.mean(th,function(d){return d.tx;})+Math.sin(i*12.9)*40,
+      y:d3.mean(th,function(d){return d.ty;})+Math.cos(i*7.3)*40});
+  });
+  var links=[];
+  T.forEach(function(t,ti){t.list.forEach(function(c,i){links.push({source:'t'+ti,target:c,ti:ti,slot:SLOTS[i],id:ti+'-'+c});});});
+
+  var sim=d3.forceSimulation(nodes)
+    .force('link',d3.forceLink(links).id(function(d){return d.id;}).distance(118).strength(0.6))
+    .force('charge',d3.forceManyBody().strength(function(d){return d.kind==='thread'?-320:-190;}))
+    .force('x',d3.forceX(function(d){return d.kind==='thread'?d.tx:cx;}).strength(function(d){return d.kind==='thread'?0.5:0.02;}))
+    .force('y',d3.forceY(function(d){return d.kind==='thread'?d.ty:cy;}).strength(function(d){return d.kind==='thread'?0.5:0.02;}))
+    .force('collide',d3.forceCollide(function(d){return d.kind==='thread'?d.w/2+8:32;}));
+
+  var eSel=g.append('g').selectAll('line').data(links).join('line').attr('class','edge')
+    .style('--c',function(d){return 'var(--t'+d.ti+')';});
+  var cSel=g.append('g').selectAll('g').data(links).join('g').attr('class','chip')
+    .style('--c',function(d){return 'var(--t'+d.ti+')';});
+  cSel.append('rect').attr('height',16).attr('y',-8).attr('rx',8);
+  cSel.append('text');
+
+  var drag=d3.drag()
+    .on('start',function(e,d){if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;})
+    .on('drag',function(e,d){d.fx=e.x;d.fy=e.y;})
+    .on('end',function(e,d){if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;});
+
+  var nSel=g.append('g').selectAll('g').data(nodes).join('g')
+    .attr('class',function(d){return 'node '+d.kind+(d.shared?' shared':'');})
+    .attr('tabindex',0).attr('role','button')
+    .attr('aria-label',function(d){return d.kind==='thread'?T[d.ti].name:PREFIX+d.code+' '+TITLES[d.code];})
+    .style('--c',function(d){return d.kind==='thread'?'var(--t'+d.ti+')':null;})
+    .call(drag);
+
+  nSel.filter(function(d){return d.kind==='thread';}).each(function(d){
+    var s=d3.select(this);
+    s.append('rect').attr('x',-d.w/2).attr('y',-17).attr('width',d.w).attr('height',34).attr('rx',17);
+    s.append('text').text(T[d.ti].name);
+  });
+  nSel.filter(function(d){return d.kind==='course';}).each(function(d){
+    var s=d3.select(this);
+    if(d.shared)s.append('circle').attr('class','ring').attr('r',d.r+5);
+    s.append('circle').attr('class','dot').attr('r',d.r);
+    s.append('text').attr('class','code').text(d.code);
+    var lines=wrapTitle(TITLES[d.code],24);
+    var t=s.append('text').attr('class','lbl');
+    lines.forEach(function(ln,i){
+      t.append('tspan').text(ln).attr('dy',i===0?(0.35-(lines.length-1)*0.55)+'em':'1.1em');
+    });
+  });
+
+  function update(){
+    eSel.attr('x1',function(d){return d.source.x;}).attr('y1',function(d){return d.source.y;})
+        .attr('x2',function(d){return d.target.x;}).attr('y2',function(d){return d.target.y;});
+    cSel.attr('transform',function(d){
+      return 'translate('+(d.source.x+(d.target.x-d.source.x)*0.6)+','+(d.source.y+(d.target.y-d.source.y)*0.6)+')';
+    });
+    nSel.attr('transform',function(d){return 'translate('+d.x+','+d.y+')';});
+    nSel.filter(function(d){return d.kind==='course';}).each(function(d){
+      var right=d.x>cx,s=d3.select(this).select('.lbl');
+      s.attr('text-anchor',right?'start':'end');
+      s.selectAll('tspan').attr('x',right?d.r+8:-(d.r+8));
+    });
+  }
+  sim.on('tick',update);
+  sim.stop();
+  for(var i=0;i<320;i++)sim.tick();
+  update();
+
+  function fit(){
+    var b=g.node().getBBox();
+    if(!b.width||!b.height)return;
+    var k=Math.min((W-32)/b.width,(H-32)/b.height,1.2);
+    var tx=W/2-(b.x+b.width/2)*k,ty=H/2-(b.y+b.height/2)*k;
+    svg.transition().duration(0).call(zoom.transform,d3.zoomIdentity.translate(tx,ty).scale(k));
+  }
+  fit();
+
+  svg.on('click',function(){S.course=null;S.threads.clear();render();});
+  var tip=$('#tip');
+  function showTip(e,d){
+    var h;
+    if(d.kind==='thread'){
+      h='<b>THREAD</b>'+esc(T[d.ti].name)+T[d.ti].list.map(function(c,i){return '<span class="tl">'+SLOTS[i]+' · Sem '+SEM[SLOTS[i]]+' · '+esc(TITLES[c])+'</span>';}).join('');
+    }else{
+      h='<b>'+PREFIX+d.code+'</b>'+esc(TITLES[d.code])+where[d.code].map(function(w){return '<span class="tl">'+esc(T[w.ti].short)+' · '+w.slot+' · Sem '+SEM[w.slot]+'</span>';}).join('');
+    }
+    tip.innerHTML=h;tip.hidden=false;moveTip(e);
+  }
+  function moveTip(e){
+    var r=wrap.getBoundingClientRect();
+    var x=e.clientX-r.left+14,y=e.clientY-r.top+14;
+    if(x>r.width-270)x=e.clientX-r.left-264;
+    if(y>r.height-140)y=Math.max(8,e.clientY-r.top-120);
+    tip.style.left=x+'px';tip.style.top=y+'px';
+  }
+  nSel.on('mouseenter',function(e,d){S.hover=d.id;showTip(e,d);applyNet();})
+      .on('mousemove',function(e){moveTip(e);})
+      .on('mouseleave',function(){S.hover=null;tip.hidden=true;applyNet();})
+      .on('focus',function(e,d){S.hover=d.id;applyNet();})
+      .on('blur',function(){S.hover=null;applyNet();})
+      .on('click',function(e,d){
+        e.stopPropagation();
+        if(d.kind==='thread')toggleThread(d.ti);
+        else S.course=(S.course===d.code?null:d.code);
+        render();
+      })
+      .on('keydown',function(e,d){
+        if(e.key==='Enter'||e.key===' '){
+          e.preventDefault();
+          if(d.kind==='thread')toggleThread(d.ti);
+          else S.course=(S.course===d.code?null:d.code);
+          render();
+        }
+      });
+
+  $('#zin').onclick=function(){svg.transition().duration(180).call(zoom.scaleBy,1.3);};
+  $('#zout').onclick=function(){svg.transition().duration(180).call(zoom.scaleBy,1/1.3);};
+  $('#zfit').onclick=function(){fit();};
+  net={sim:sim,W:W,H:H,eSel:eSel,cSel:cSel,nSel:nSel};
+}
+
+function focusSets(){
+  var nodes=new Set(),edges=new Set(),any=false;
+  function addThread(ti){nodes.add('t'+ti);T[ti].list.forEach(function(c){nodes.add(c);edges.add(ti+'-'+c);});}
+  function addCourse(c){nodes.add(c);where[c].forEach(function(w){nodes.add('t'+w.ti);edges.add(w.ti+'-'+c);});}
+  if(S.threads.size||S.course){any=true;S.threads.forEach(addThread);if(S.course)addCourse(S.course);}
+  if(S.hover){any=true;if(S.hover.charAt(0)==='t')addThread(+S.hover.slice(1));else addCourse(S.hover);}
+  return {nodes:nodes,edges:edges,any:any};
+}
+function applyNet(){
+  if(!net)return;
+  var f=focusSets();
+  net.nSel.classed('dim',function(d){return f.any&&!f.nodes.has(d.id);})
+    .classed('sel',function(d){return d.kind==='thread'?S.threads.has(d.ti):S.course===d.code;})
+    .classed('x',function(d){return d.kind==='course'&&S.threads.size>1&&where[d.code].filter(function(w){return S.threads.has(w.ti);}).length>1;});
+  net.eSel.classed('dim',function(d){return f.any&&!f.edges.has(d.id);})
+    .classed('hl',function(d){return f.any&&f.edges.has(d.id);});
+  net.cSel.classed('dim',function(d){return f.any&&!f.edges.has(d.id);})
+    .each(function(d){
+      var full=f.any&&f.edges.has(d.id);
+      var txt=full?d.slot+' · Sem '+SEM[d.slot]:d.slot+' · S'+SEM[d.slot];
+      var s=d3.select(this),w=txt.length*6.1+12;
+      s.select('text').text(txt);
+      s.select('rect').attr('width',w).attr('x',-w/2);
+    });
+  $('#net').classList.toggle('notitles',!S.titles);
+}
+$('#ttoggle').addEventListener('click',function(){
+  S.titles=!S.titles;this.setAttribute('aria-pressed',S.titles);applyNet();
+});
+function ensureNet(){
+  var wrap=$('#net');
+  if(S.view!=='network'||wrap.hidden)return;
+  var w=wrap.clientWidth,h=wrap.clientHeight;
+  if(!net||Math.abs(w-net.W)>60||Math.abs(h-net.H)>60){buildNet();}
+}
+var rt=null;
+if(window.ResizeObserver){
+  new ResizeObserver(function(){clearTimeout(rt);rt=setTimeout(function(){if(S.view==='network'){ensureNet();applyNet();}},200);}).observe($('#net'));
+}
+
+/* ---------- semester map ---------- */
+var grid=$('#grid');
+function buildMap(){
+  var h='<div class="band s5"></div><div class="band s6"></div><div class="band s7"></div>';
+  h+='<div class="corner" style="grid-row:1/3;grid-column:1">Thread</div>';
+  h+='<div class="semh" style="grid-row:1;grid-column:2">Semester 5</div>';
+  h+='<div class="semh" style="grid-row:1;grid-column:3/5">Semester 6</div>';
+  h+='<div class="semh" style="grid-row:1;grid-column:5/7">Semester 7</div>';
+  SLOTS.forEach(function(s,i){h+='<div class="eh" style="grid-row:2;grid-column:'+(i+2)+'">'+s+'</div>';});
+  T.forEach(function(t,ti){
+    var r=ti+3;
+    h+='<div class="rowh" data-row="'+ti+'" style="grid-row:'+r+';grid-column:1"><button class="rbtn" data-rt="'+ti+'" style="--c:var(--t'+ti+')" aria-pressed="false"><i></i><span>'+esc(t.name)+'</span></button></div>';
+    t.list.forEach(function(c,i){
+      var sh=isShared(c);
+      var others=where[c].filter(function(w){return w.ti!==ti;});
+      h+='<button class="mcard'+(sh?' shared':'')+'" data-c="'+c+'" data-t="'+ti+'" style="grid-row:'+r+';grid-column:'+(i+2)+'">'
+        +'<span class="mcode"><span>'+PREFIX+c+'</span>'+(sh?'<b>★ shared</b>':'')+'</span>'
+        +'<span class="mttl">'+esc(TITLES[c])+'</span>'
+        +(sh?'<span class="malso">'+others.map(function(w){return '<em style="--c:var(--t'+w.ti+')"><i></i>'+esc(T[w.ti].short)+' '+w.slot+'</em>';}).join('')+'</span>':'')
+        +'</button>';
+    });
+  });
+  h+='<svg class="mlinks" id="mlinks" aria-hidden="true"></svg>';
+  grid.innerHTML=h;
+}
+buildMap();
+grid.addEventListener('click',function(e){
+  var card=e.target.closest('.mcard');
+  if(card){S.course=(S.course===card.dataset.c?null:card.dataset.c);render();return;}
+  var rb=e.target.closest('.rbtn');
+  if(rb){toggleThread(+rb.dataset.rt);render();}
+});
+function setMapHover(c){
+  if(S.mapHover===c)return;
+  S.mapHover=c;applyMap();drawLinks();
+}
+grid.addEventListener('mouseover',function(e){var c=e.target.closest('.mcard');setMapHover(c?c.dataset.c:null);});
+grid.addEventListener('mouseleave',function(){setMapHover(null);});
+grid.addEventListener('focusin',function(e){var c=e.target.closest('.mcard');if(c)setMapHover(c.dataset.c);});
+grid.addEventListener('focusout',function(){setMapHover(null);});
+
+function applyMap(){
+  var active=S.mapHover||S.course;
+  grid.classList.toggle('focus',!!active||S.threads.size>0);
+  grid.querySelectorAll('.mcard').forEach(function(el){
+    var c=el.dataset.c,ti=+el.dataset.t;
+    var dim=active?(c!==active):(S.threads.size>0&&!S.threads.has(ti));
+    el.classList.toggle('dim',dim);
+    el.classList.toggle('hl',!!active&&c===active&&c!==S.course);
+    el.classList.toggle('sel',S.course===c);
+  });
+  grid.querySelectorAll('.rowh').forEach(function(el){
+    var ti=+el.dataset.row;
+    var dim=S.threads.size>0&&!S.threads.has(ti);
+    el.classList.toggle('dim',dim);
+    el.querySelector('.rbtn').setAttribute('aria-pressed',S.threads.has(ti));
+  });
+}
+function drawLinks(){
+  var svg=$('#mlinks'); if(!svg)return;
+  svg.innerHTML='';
+  var code=S.mapHover||S.course;
+  if(!code||!isShared(code)||$('#map').hidden)return;
+  var gr=grid.getBoundingClientRect();
+  var cards=[].slice.call(grid.querySelectorAll('.mcard[data-c="'+code+'"]')).sort(function(a,b){return +a.dataset.t-+b.dataset.t;});
+  var ns='http://www.w3.org/2000/svg',out='';
+  for(var i=0;i<cards.length-1;i++){
+    var a=cards[i].getBoundingClientRect(),b=cards[i+1].getBoundingClientRect();
+    var ax=a.left-gr.left+a.width/2,ay=a.bottom-gr.top,bx=b.left-gr.left+b.width/2,by=b.top-gr.top,d=Math.max(14,(by-ay)/2);
+    out+='<path class="mlink" d="M'+ax+' '+ay+' C'+ax+' '+(ay+d)+' '+bx+' '+(by-d)+' '+bx+' '+by+'"/>';
+    out+='<circle class="mend" cx="'+ax+'" cy="'+ay+'" r="4"/><circle class="mend" cx="'+bx+'" cy="'+by+'" r="4"/>';
+  }
+  svg.setAttribute('xmlns',ns);
+  svg.innerHTML=out;
+}
+
+/* ---------- panel ---------- */
+var panel=$('#panel');
+function cline(c,slot,ti){
+  var sh=isShared(c);
+  var others=ti==null?[]:where[c].filter(function(w){return w.ti!==ti;});
+  return '<button class="cl'+(sh?' sh':'')+'" data-c="'+c+'"><span class="cs">'+slot+'</span><span class="cn"><span class="cc">'+PREFIX+c+'</span>'+esc(TITLES[c])
+    +(others.length?'<span class="also-in">also in '+others.map(function(w){return esc(T[w.ti].short)+' ('+w.slot+')';}).join(', ')+'</span>':'')
+    +'</span>'+(sh?'<b class="star" title="Shared with another thread">★</b>':'')+'</button>';
+}
+function threadBlock(ti){
+  var t=T[ti];
+  var rows=[5,6,7].map(function(sem){
+    var items=t.list.map(function(c,i){return {c:c,slot:SLOTS[i]};}).filter(function(x){return SEM[x.slot]===sem;});
+    return '<div class="semrow"><div class="semlab">Sem '+sem+'</div><div class="semitems">'+items.map(function(x){return cline(x.c,x.slot,ti);}).join('')+'</div></div>';
+  }).join('');
+  return '<section class="tblock" style="--c:var(--t'+ti+')"><h3>'+dot(ti)+esc(t.name)+'</h3>'+rows+'</section>';
+}
+function courseCard(c){
+  var w=where[c],bySem={};
+  w.forEach(function(x){(bySem[SEM[x.slot]]=bySem[SEM[x.slot]]||[]).push(x);});
+  var sems=Object.keys(bySem),note;
+  if(w.length===1)note='Only in '+esc(T[w[0].ti].name)+', taken in Sem '+SEM[w[0].slot]+' as '+w[0].slot+'.';
+  else if(sems.length===1)note='Shared by '+w.length+' threads and taken in Sem '+sems[0]+' in all of them.';
+  else note='Shared by '+w.length+' threads, but the semester depends on the thread: '+sems.map(function(s){return 'Sem '+s+' for '+bySem[s].map(function(x){return esc(T[x.ti].short);}).join(', ');}).join('; ')+'.';
+  return '<h2>'+esc(TITLES[c])+'</h2><div class="cc" style="margin-bottom:8px">'+PREFIX+c+'</div>'
+    +w.map(function(x){return '<div class="thr">'+dot(x.ti)+esc(T[x.ti].name)+'<span class="cs">'+x.slot+' · Sem '+SEM[x.slot]+'</span></div>';}).join('')
+    +'<div class="'+(sems.length>1?'notice':'info')+'">'+note+'</div>';
+}
+function planner(){
+  var sel=[].slice.call(S.threads).sort(function(a,b){return a-b;});
+  var uniq=new Set();sel.forEach(function(ti){T[ti].list.forEach(function(c){uniq.add(c);});});
+  var sharedSel=[].slice.call(uniq).filter(function(c){return where[c].filter(function(w){return S.threads.has(w.ti);}).length>1;});
+  var h='<h2>'+(sel.length===1?esc(T[sel[0]].name):'Comparing '+sel.length+' threads')+'</h2>';
+  if(sel.length===1){
+    h+='<p class="lead">Five courses, one per slot. Click a course for details.</p>';
+  }else{
+    h+='<div class="stats"><span><b>'+uniq.size+'</b> unique courses</span><span><b>'+sharedSel.length+'</b> shared</span><span><b>'+sel.length*5+'</b> slots in total</span></div>';
+    if(sel.length===2){
+      var a=T[sel[0]],b=T[sel[1]];
+      var k=a.list.filter(function(c){return b.list.indexOf(c)>-1;}).length;
+      h+='<div class="info">Moving between <b>'+esc(a.short)+'</b> and <b>'+esc(b.short)+'</b> means '+(5-k)+' new course'+(5-k===1?'':'s')+'.'+(k?'':' They have nothing in common.')+'</div>';
+    }
+    var conflicts=sharedSel.map(function(c){
+      var bySem={};
+      where[c].filter(function(w){return S.threads.has(w.ti);}).forEach(function(w){(bySem[SEM[w.slot]]=bySem[SEM[w.slot]]||[]).push(w.ti);});
+      return {c:c,bySem:bySem,n:Object.keys(bySem).length};
+    }).filter(function(x){return x.n>1;});
+    conflicts.forEach(function(x){
+      h+='<div class="notice"><b>Different semesters.</b> '+esc(TITLES[x.c])+' is '+Object.keys(x.bySem).map(function(s){return 'Sem '+s+' in '+x.bySem[s].map(function(ti){return esc(T[ti].short);}).join(', ');}).join(' and ')+'.</div>';
+    });
+  }
+  sel.forEach(function(ti){h+=threadBlock(ti);});
+  return h;
+}
+function matrix(){
+  var cur=S.threads.size===2?[].slice.call(S.threads):null;
+  var h='<div class="mx"><span></span>'+T.map(function(t,i){return '<span class="mxh" style="--c:var(--t'+i+')">'+dot(i)+esc(t.short)+'</span>';}).join('');
+  T.forEach(function(a,i){
+    h+='<span class="mxh r" style="--c:var(--t'+i+')">'+dot(i)+esc(a.short)+'</span>';
+    T.forEach(function(b,j){
+      if(i===j){h+='<span class="mxc diag">–</span>';return;}
+      var n=a.list.filter(function(c){return b.list.indexOf(c)>-1;}).length;
+      var isCur=cur&&cur.indexOf(i)>-1&&cur.indexOf(j)>-1;
+      h+='<button class="mxc'+(n?' on':'')+(isCur?' cur':'')+'" data-pair="'+i+','+j+'" aria-label="'+esc(a.name)+' and '+esc(b.name)+': '+n+' shared">'+n+'</button>';
+    });
+  });
+  return h+'</div>';
+}
+function overview(){
+  var h='<h2>Overview</h2><p class="lead">Pick one or more threads above, or click any node or card. Each line shows the slot (E1 to E5) a thread uses for that course, and the slot sets the semester.</p>';
+  h+='<div class="stats"><span><b>'+T.length+'</b> threads</span><span><b>'+codes.length+'</b> unique courses</span><span><b>'+sharedCodes.length+'</b> shared</span></div>';
+  h+='<h3>Shared courses</h3>';
+  h+=sharedCodes.map(function(c){
+    return '<button class="cl sh" data-c="'+c+'"><span class="cn"><span class="cc">'+PREFIX+c+'</span>'+esc(TITLES[c])
+      +'<span class="also-in">'+where[c].map(function(w){return esc(T[w.ti].short)+' '+w.slot+' (Sem '+SEM[w.slot]+')';}).join(' · ')+'</span></span><b class="star">★</b></button>';
+  }).join('');
+  h+='<h3>Courses in common</h3><p class="lead" style="margin-bottom:8px">Click a cell to compare two threads.</p>'+matrix();
+  return h;
+}
+function renderPanel(){
+  var h='';
+  if(S.course)h+=courseCard(S.course);
+  if(S.threads.size){h+=(S.course?'<div style="height:14px"></div>':'')+planner();}
+  else if(!S.course){h=overview();}
+  else{h+='<h3>Shared courses</h3>'+'<p class="lead">Select a thread above to see its semester plan.</p>';}
+  panel.innerHTML=h;
+}
+panel.addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  if(b.dataset.c){S.course=(S.course===b.dataset.c?null:b.dataset.c);}
+  else if(b.dataset.pair){var p=b.dataset.pair.split(',').map(Number);S.threads=new Set(p);S.course=null;}
+  render();
+});
+
+/* ---------- render ---------- */
+function render(){
+  $('#net').hidden=S.view!=='network';
+  $('#map').hidden=S.view!=='map';
+  $('#vNet').setAttribute('aria-pressed',S.view==='network');
+  $('#vMap').setAttribute('aria-pressed',S.view==='map');
+  chipsEl.querySelectorAll('.tchip').forEach(function(b){b.setAttribute('aria-pressed',S.threads.has(+b.dataset.t));});
+  $('#clear').hidden=!(S.threads.size||S.course);
+  if(S.view==='network'){ensureNet();applyNet();}
+  else{applyMap();drawLinks();}
+  renderPanel();
+}
+render();
+})();
+</script>
+
+</body></html>
